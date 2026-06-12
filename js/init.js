@@ -4,6 +4,12 @@
 // ============================================================
 
 function seedDemoData() {
+  if (!localStorage.getItem('rlhf_seeded_v1')) {
+    localStorage.clear();
+    localStorage.setItem('rlhf_seeded_v1', 'true');
+    location.reload();
+    return;
+  }
   if (DB.users.all().length > 0) return; // Already seeded
 
   // Demo Users
@@ -31,6 +37,10 @@ function seedDemoData() {
   // Demo Project 3: Intent Classification
   const proj3Id = Utils.uuid();
   DB.projects.create({ project_id: proj3Id, project_name: 'Customer Support Intent Classification', task_type: 'intent', label_set: ['Complaint', 'Query', 'Praise', 'Feedback'], instructions: 'Classify the customer\'s message into one of these intents:\n- Complaint: Customer is expressing dissatisfaction\n- Query: Customer is asking a question\n- Praise: Customer is complimenting the service\n- Feedback: Customer is providing constructive suggestions', status: 'active', deadline: null, created_by: adminId, created_date: Utils.now(), instructions_version: 1 });
+
+  // Demo Project 4: RLHF Code & Formatting Evaluation
+  const proj4Id = Utils.uuid();
+  DB.projects.create({ project_id: proj4Id, project_name: 'RLHF Code & Formatting Evaluation', task_type: 'response_comparison', label_set: ['Response A Better', 'Response B Better', 'Both Same', 'Both Bad'], instructions: 'Compare Response A and Response B. Pay close attention to code formatting and factual accuracy. Select the better response, justify your decision, and optionally edit the winner.', status: 'active', deadline: '2025-08-01', created_by: adminId, created_date: Utils.now(), instructions_version: 1 });
 
   // Demo Items for Project 1
   const sentimentTexts = [
@@ -70,6 +80,16 @@ function seedDemoData() {
   const proj3Items = intentTexts.map((text, i) => ({ item_id: Utils.uuid(), project_id: proj3Id, original_id: `INT-${String(i+1).padStart(3,'0')}`, text, prompt: '', ai_response: '', response_a: '', response_b: '', item_status: 'active', is_gold_standard: false, gold_standard_label: '', uploaded_by: adminId, upload_date: Utils.now() }));
   DB.items.bulkCreate(proj3Items);
 
+  // Demo Items for Project 4
+  const rlhfData = [
+    { prompt: 'Write a Python script to reverse a string.', respA: 'def rev(s): return s[::-1]', respB: '```python\\ndef reverse_string(text):\\n  return "".join(reversed(text))\\n```' },
+    { prompt: 'Explain the difference between a list and a tuple in Python. Include a code example.', respA: 'A list is mutable, a tuple is immutable. \\n```python\\nmy_list = [1, 2, 3]\\nmy_tuple = (1, 2, 3)\\nmy_list[0] = 5 # Works\\nmy_tuple[0] = 5 # Error\\n```', respB: 'Lists and tuples are both sequences in Python. Lists use brackets `[]` and tuples use parentheses `()`. Lists can be changed after creation, but tuples cannot.' },
+    { prompt: 'Write a professional email declining a job offer because I accepted another position.', respA: "Hi there,\\n\\nI can't take the job. I got a better one. Thanks anyway.\\n\\nBye,", respB: 'Dear Hiring Team,\\n\\nThank you so much for offering me the position. However, I have recently accepted an offer with another company, so I must respectfully decline. I appreciate the time you took to interview me.\\n\\nBest regards,' },
+    { prompt: 'Create a markdown table comparing the top 3 planets by size.', respA: '| Planet | Size |\\n|---|---|\\n| Jupiter | Biggest |\\n| Saturn | Big |\\n| Earth | Small |', respB: 'Here is the comparison:\\n\\n| Planet | Equatorial Diameter (km) |\\n| :--- | :--- |\\n| Jupiter | 142,984 |\\n| Saturn | 120,536 |\\n| Uranus | 51,118 |' }
+  ];
+  const proj4Items = rlhfData.map((d, i) => ({ item_id: Utils.uuid(), project_id: proj4Id, original_id: `RLHF-${String(i+1).padStart(3,'0')}`, text: d.prompt, prompt: d.prompt, ai_response: '', response_a: d.respA, response_b: d.respB, item_status: 'active', is_gold_standard: false, gold_standard_label: '', uploaded_by: adminId, upload_date: Utils.now() }));
+  DB.items.bulkCreate(proj4Items);
+
   // Assign items to annotators (round-robin for proj1)
   const allProj1Items = DB.items.byProject(proj1Id);
   const annotators = [ann1Id, ann2Id, ann3Id];
@@ -89,12 +109,18 @@ function seedDemoData() {
   const proj3IAs = proj3Items.map(i => ({ ia_id: Utils.uuid(), item_id: i.item_id, project_id: proj3Id, assigned_to: ann2Id, assigned_by: adminId, assigned_date: Utils.now(), status: 'pending' }));
   DB.itemAssignments.bulkCreate(proj3IAs);
 
+  // Assign proj4 items (2 to ann1, 2 to ann2)
+  const proj4IAsAnn1 = proj4Items.slice(0, 2).map(i => ({ ia_id: Utils.uuid(), item_id: i.item_id, project_id: proj4Id, assigned_to: ann1Id, assigned_by: adminId, assigned_date: Utils.now(), status: 'pending' }));
+  const proj4IAsAnn2 = proj4Items.slice(2).map(i => ({ ia_id: Utils.uuid(), item_id: i.item_id, project_id: proj4Id, assigned_to: ann2Id, assigned_by: adminId, assigned_date: Utils.now(), status: 'pending' }));
+  DB.itemAssignments.bulkCreate([...proj4IAsAnn1, ...proj4IAsAnn2]);
+
   // Project assignments
   [ann1Id, ann2Id, ann3Id].forEach(uid => DB.assignments.create({ assignment_id: Utils.uuid(), project_id: proj1Id, user_id: uid, role: 'annotator', assigned_date: Utils.now(), assigned_by: adminId }));
   DB.assignments.create({ assignment_id: Utils.uuid(), project_id: proj2Id, user_id: ann1Id, role: 'annotator', assigned_date: Utils.now(), assigned_by: adminId });
   DB.assignments.create({ assignment_id: Utils.uuid(), project_id: proj3Id, user_id: ann2Id, role: 'annotator', assigned_date: Utils.now(), assigned_by: adminId });
+  DB.assignments.create({ assignment_id: Utils.uuid(), project_id: proj4Id, user_id: ann1Id, role: 'annotator', assigned_date: Utils.now(), assigned_by: adminId });
   [rev1Id, rev2Id].forEach(uid => {
-    [proj1Id, proj2Id, proj3Id].forEach(pid => DB.assignments.create({ assignment_id: Utils.uuid(), project_id: pid, user_id: uid, role: 'reviewer', assigned_date: Utils.now(), assigned_by: adminId }));
+    [proj1Id, proj2Id, proj3Id, proj4Id].forEach(pid => DB.assignments.create({ assignment_id: Utils.uuid(), project_id: pid, user_id: uid, role: 'reviewer', assigned_date: Utils.now(), assigned_by: adminId }));
   });
 
   // Sample completed annotations for proj1 (first 3 items by ann1)

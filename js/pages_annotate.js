@@ -75,6 +75,27 @@ Pages.annotate = function (itemId, iaId) {
   const prevLabel = existingAnn?.annotator_label || '';
   const prevComment = existingAnn?.annotator_comment || '';
 
+  // --- Active Timer Logic ---
+  Pages._activeTimerSeconds = 0;
+  if (Pages._timerInterval) clearInterval(Pages._timerInterval);
+  Pages._timerInterval = setInterval(() => {
+    if (!document.hidden) {
+      Pages._activeTimerSeconds++;
+      const min = String(Math.floor(Pages._activeTimerSeconds / 60)).padStart(2, '0');
+      const sec = String(Pages._activeTimerSeconds % 60).padStart(2, '0');
+      const timerEl = document.getElementById('ann-timer');
+      if (timerEl) {
+        timerEl.innerHTML = `<span class="timer-dot"></span> ${min}:${sec}`;
+        timerEl.className = 'timer-badge active';
+      }
+    } else {
+      const timerEl = document.getElementById('ann-timer');
+      if (timerEl) timerEl.className = 'timer-badge idle';
+    }
+  }, 1000);
+  
+  const timerHtml = `<div class="timer-badge active" id="ann-timer" style="margin-left:15px"><span class="timer-dot"></span> 00:00</div>`;
+
   Pages._annStartTime = Date.now();
   Pages._activeLabelsList = labels;
 
@@ -132,7 +153,7 @@ Pages.annotate = function (itemId, iaId) {
     document.getElementById('main-content').innerHTML = `
       <div class="page-header" style="margin-bottom:16px">
         <div><div class="page-title">${Utils.esc(proj.project_name)}</div>
-        <div class="page-subtitle">Span Annotation (NER) ${isReview ? '· ⚠️ REDO REQUIRED' : ''}</div></div>
+        <div class="page-subtitle" style="display:flex;align-items:center;gap:10px">Span Annotation (NER) ${isReview ? '· ⚠️ REDO REQUIRED' : ''} ${timerHtml}</div></div>
         <button class="btn btn-ghost btn-sm" onclick="Pages._unbindNerShortcuts(); Router.navigate('queue')">← Queue</button>
       </div>
       <div style="display:flex;gap:20px;align-items:stretch;height:calc(100vh - 120px);padding-bottom:20px" id="ner-layout-container">
@@ -147,23 +168,36 @@ Pages.annotate = function (itemId, iaId) {
     // ── STANDARD LAYOUT ─────────────────────────────────────────
     let taskHTML = '';
     if (proj.task_type === 'response_comparison') {
+      Pages._currentItemA = item.response_a || '';
+      Pages._currentItemB = item.response_b || '';
+      const renderMD = text => typeof marked !== 'undefined' ? DOMPurify.sanitize(marked.parse(text)) : Utils.esc(text);
       taskHTML = `
         <div class="text-display-label">Prompt</div>
         <div class="text-display">${Utils.esc(item.prompt || item.text || '—')}</div>
         <div class="response-cols">
           <div class="response-card" id="rc-a">
             <div class="response-label a">Response A</div>
-            <div class="response-text">${Utils.esc(item.response_a || '—')}</div>
+            <div class="response-text markdown-body">${renderMD(Pages._currentItemA)}</div>
           </div>
           <div class="response-card" id="rc-b">
             <div class="response-label b">Response B</div>
-            <div class="response-text">${Utils.esc(item.response_b || '—')}</div>
+            <div class="response-text markdown-body">${renderMD(Pages._currentItemB)}</div>
           </div>
         </div>
+        <div class="card-title" style="margin:16px 0 10px">Multi-Dimensional Evaluation</div>
+        <div class="star-row"><span class="star-row-label">Instruction Following</span><div class="star-group" id="stars-instr">${Pages._stars('instr', existingAnn?.instr_score||0)}</div></div>
+        <div class="star-row"><span class="star-row-label">Factuality</span><div class="star-group" id="stars-fact">${Pages._stars('fact', existingAnn?.fact_score||0)}</div></div>
+        <div class="star-row"><span class="star-row-label">Formatting</span><div class="star-group" id="stars-form">${Pages._stars('form', existingAnn?.form_score||0)}</div></div>
+        <div class="divider"></div>
         <div class="label-btn-grid" id="lbg">${labels.map((l,i)=>`
           <div class="label-btn ${labelColors[i%labelColors.length]} ${prevLabel===l?'selected':''}" data-label="${Utils.esc(l)}" onclick="Pages._selectLabel(this)">
             <span class="lbl-icon">${labelIcons[l]||'🏷️'}</span>${Utils.esc(l)}
-          </div>`).join('')}</div>`;
+          </div>`).join('')}</div>
+          
+        <div id="rc-rewrite-section" style="display:${prevLabel.includes('Response') ? 'block' : 'none'}; margin-top: 20px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">Final Edited Response (Make slight edits to improve your chosen response)</div>
+          <textarea class="form-textarea" id="ann-edited-response" placeholder="Edit the selected response here..." rows="8" style="font-family: monospace;">${Utils.esc(existingAnn?.edited_response || '')}</textarea>
+        </div>`;
     } else if (proj.task_type === 'ai_evaluation') {
       taskHTML = `
         ${item.prompt ? `<div class="text-display-label">Prompt</div><div class="text-display">${Utils.esc(item.prompt)}</div>` : ''}
@@ -196,6 +230,7 @@ Pages.annotate = function (itemId, iaId) {
         <div class="annotation-header">
           <span class="annotation-counter">Item ${myIAs.length - total + currentIdx + 1} · ${total} remaining</span>
           <span class="annotation-task-badge">${Utils.taskLabel(proj.task_type)}</span>
+          ${timerHtml}
           <button class="btn btn-ghost btn-sm" onclick="Router.navigate('queue')">← Queue</button>
         </div>
         <div class="progress-label"><span>Overall Progress</span><span>${pct}%</span></div>
@@ -230,7 +265,24 @@ Pages._setStar = el => {
   el.closest('.star-group').dataset.val = val;
 };
 Pages._getStarVal = dim => parseInt(document.querySelector(`.star-group[id*="${dim}"]`)?.dataset?.val || document.querySelectorAll(`.star[data-dim="${dim}"].lit`).length || 0);
-Pages._selectLabel = el => { document.querySelectorAll('#lbg .label-btn').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); };
+Pages._selectLabel = el => { 
+  document.querySelectorAll('#lbg .label-btn').forEach(b => b.classList.remove('selected')); 
+  el.classList.add('selected'); 
+  
+  const rwSec = document.getElementById('rc-rewrite-section');
+  const rwText = document.getElementById('ann-edited-response');
+  if (rwSec && rwText) {
+    const lbl = el.dataset.label;
+    if (lbl.includes('Response A') || lbl.includes('Response B')) {
+      rwSec.style.display = 'block';
+      if (!rwText.value.trim() || rwText.value === Pages._currentItemA || rwText.value === Pages._currentItemB) {
+        rwText.value = lbl.includes('Response A') ? Pages._currentItemA : Pages._currentItemB;
+      }
+    } else {
+      rwSec.style.display = 'none';
+    }
+  }
+};
 Pages._setConf = el => {
   document.querySelectorAll('.conf-btn').forEach(b => b.className = 'conf-btn');
   const conf = el.dataset.conf;
@@ -371,15 +423,28 @@ Pages._unbindNerShortcuts = () => {
 Pages._skipItem = iaId => { Pages._unbindNerShortcuts(); DB.itemAssignments.update(iaId, { status: 'skipped' }); Toast.info('Item skipped.'); Router.navigate('queue'); };
 Pages._submitAnnotation = (itemId, iaId, projId, taskType) => {
   Pages._unbindNerShortcuts();
+  if (Pages._timerInterval) clearInterval(Pages._timerInterval);
   const u = Auth.currentUser;
   const selectedLabel = document.querySelector('#lbg .label-btn.selected')?.dataset?.label;
   const comment = document.getElementById('ann-comment')?.value.trim() || '';
   const confEl = document.querySelector('.conf-btn.active-high, .conf-btn.active-medium, .conf-btn.active-low');
   const confidence = confEl ? confEl.dataset.conf : 'medium';
   const isNer = taskType === 'ner';
-  if (!isNer && !selectedLabel) { Toast.error('Please select a label before submitting.'); return; }
+
+  const editedRespEl = document.getElementById('ann-edited-response');
+  const editedResponse = editedRespEl ? editedRespEl.value.trim() : null;
+
+  if (taskType === 'response_comparison') {
+      if (!selectedLabel) { Toast.error('Please select a winner before submitting.'); return; }
+      if (comment.length < 10) { Toast.error('Please provide a justification (min 10 chars) for your choice.'); return; }
+      if (editedRespEl && editedRespEl.parentElement.style.display !== 'none' && editedResponse.length === 0) {
+          Toast.error('Please provide a final edited response.'); return;
+      }
+  } else {
+      if (!isNer && !selectedLabel) { Toast.error('Please select a label before submitting.'); return; }
+  }
   
-  const timeTaken = Math.round((Date.now() - (Pages._annStartTime || Date.now())) / 1000);
+  const timeTaken = Pages._activeTimerSeconds !== undefined ? Pages._activeTimerSeconds : Math.round((Date.now() - (Pages._annStartTime || Date.now())) / 1000);
   const existing = DB.annotations.byItemAndUser(itemId, u.user_id);
   const label = isNer ? (Pages._nerEntities.length + ' entit' + (Pages._nerEntities.length === 1 ? 'y' : 'ies') + ' tagged') : selectedLabel;
   
@@ -393,6 +458,8 @@ Pages._submitAnnotation = (itemId, iaId, projId, taskType) => {
     ner_entities: isNer ? JSON.stringify(formattedSpans) : null,
     accuracy_score: Pages._getStarVal('acc'), helpfulness_score: Pages._getStarVal('help'), safety_score: Pages._getStarVal('safe'),
     factuality: document.querySelector('input[name="fact"]:checked')?.value || '',
+    instr_score: Pages._getStarVal('instr'), fact_score: Pages._getStarVal('fact'), form_score: Pages._getStarVal('form'),
+    edited_response: editedResponse
   };
   if (existing) {
     DB.history.create({ history_id: Utils.uuid(), annotation_id: existing.annotation_id, changed_by: u.user_id, old_label: existing.annotator_label, new_label: label, old_comment: existing.annotator_comment, new_comment: comment, change_type: existing.status === 're_annotation_required' ? 're_annotate' : 'edit', timestamp: Utils.now() });

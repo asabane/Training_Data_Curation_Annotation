@@ -2,6 +2,8 @@ id,text,prompt,ai_response,response_a,response_b
 101,The customer service was absolutely fantastic and resolved my issue in under five minutes!,,,,
 102,I am very frustrated with the recent software update. It broke all my saved settings.,,,,
 103,,Can you explain how quantum computing works to a 5 year old?,Quantum computing is like a magical puzzle box where the pieces can be in multiple places at the exact same time.,,
-104,,Write a Python script to reverse a string. sure thing!,,def rev(s): return s[::-1],def reverse_string(text):\n  return ''.join(reversed(text))
-105,Microsoft announced yesterday that the new Surface Pro will be released on October 24th in Seattle.,,,,
-106,Please cancel my current subscription and refund the last month charge.,,,,
+104,,Write a Python script to reverse a string.,,"def rev(s): return s[::-1]","```python\ndef reverse_string(text):\n  return "".join(reversed(text))\n```"
+105,,Explain the difference between a list and a tuple in Python. Include a code example.,,"A list is mutable, a tuple is immutable. \n```python\nmy_list = [1, 2, 3]\nmy_tuple = (1, 2, 3)\nmy_list[0] = 5 # Works\nmy_tuple[0] = 5 # Error\n```","Lists and tuples are both sequences in Python. Lists use brackets `[]` and tuples use parentheses `()`. Lists can be changed after creation, but tuples cannot."
+106,Microsoft announced yesterday that the new Surface Pro will be released on October 24th in Seattle.,,,,
+107,,Write a professional email declining a job offer because I accepted another position.,,"Hi there,\n\nI can't take the job. I got a better one. Thanks anyway.\n\nBye,","Dear Hiring Team,\n\nThank you so much for offering me the position. However, I have recently accepted an offer with another company, so I must respectfully decline. I appreciate the time you took to interview me.\n\nBest regards,"
+108,,Create a markdown table comparing the top 3 planets by size.,,"| Planet | Size |\n|---|---|\n| Jupiter | Biggest |\n| Saturn | Big |\n| Earth | Small |","Here is the comparison:\n\n| Planet | Equatorial Diameter (km) |\n| :--- | :--- |\n| Jupiter | 142,984 |\n| Saturn | 120,536 |\n| Uranus | 51,118 |"
