@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AnnotateAI — AI Training Data Annotation Platform</title>
+  <meta name="description" content="Human-in-the-loop AI training data curation and annotation platform for RLHF, sentiment analysis, intent classification, and AI evaluation." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="app">
+  <div id="view-login" class="page-full hidden"></div>
+  <div id="view-app" class="app-layout hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <div class="brand-icon">🧠</div>
+          <div>
+            <div class="brand-name">AnnotateAI</div>
+            <div class="brand-version">v1.0 · Training Edition</div>
+          </div>
+        </div>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav"></nav>
+      <div class="sidebar-footer">
+        <div class="user-card" id="user-card"></div>
+      </div>
+    </aside>
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-breadcrumb" id="topbar-breadcrumb"><strong>Dashboard</strong></div>
+        <div class="topbar-actions">
+          <div class="icon-btn" id="notif-btn" title="Notifications">🔔<span class="notif-dot hidden" id="notif-dot"></span></div>
+          <div class="icon-btn" id="logout-btn" title="Logout">🚪</div>
+        </div>
+      </header>
+      <main class="page-content" id="main-content"></main>
+    </div>
+  </div>
+</div>
+
+<div class="notif-dropdown hidden" id="notif-dropdown"></div>
+<div class="modal-overlay hidden" id="modal-overlay"><div id="modal-container"></div></div>
+<div class="toast-container" id="toast-container"></div>
+
+<script src="js/utils.js"></script>
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/pages_login.js"></script>
+<script src="js/pages_admin.js"></script>
+<script src="js/pages_annotate.js"></script>
+<script src="js/pages_review.js"></script>
+<script src="js/pages_phase2.js"></script>
+<script src="js/session.js"></script>
+<script src="js/pages_phase3.js"></script>
+<script src="js/init.js"></script>
+</body>
+</html>

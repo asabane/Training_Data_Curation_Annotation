@@ -1,0 +1,7 @@
+id,text,prompt,ai_response,response_a,response_b
+101,The customer service was absolutely fantastic and resolved my issue in under five minutes!,,,,
+102,I am very frustrated with the recent software update. It broke all my saved settings.,,,,
+103,,Can you explain how quantum computing works to a 5 year old?,Quantum computing is like a magical puzzle box where the pieces can be in multiple places at the exact same time.,,
+104,,Write a Python script to reverse a string. sure thing!,,def rev(s): return s[::-1],def reverse_string(text):\n  return ''.join(reversed(text))
+105,Microsoft announced yesterday that the new Surface Pro will be released on October 24th in Seattle.,,,,
+106,Please cancel my current subscription and refund the last month charge.,,,,
